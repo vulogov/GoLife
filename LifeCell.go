@@ -15,6 +15,14 @@ type Cell struct {
 }
 
 
+func NewCell(w *World, x, y int) *Cell {
+  var c *Cell = new(Cell)
+  c.x = x
+  c.y = y
+  c.ToDead()
+  return c
+}
+
 func (c *Cell) X() int {
   return c.x
 }
