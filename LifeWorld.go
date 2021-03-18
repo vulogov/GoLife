@@ -55,10 +55,10 @@ func (w *World) CreateWorld() {
 }
 
 func (w* World) Cell(x int, y int) (*Cell, error) {
-  if x > w.xMax && x < 0 {
+  if x > w.xMax || x < 0 {
     return nil, errors.New(fmt.Sprintf("X dimention is out of bounds: %v", x))
   }
-  if y > w.yMax && y < 0 {
+  if y > w.yMax || y < 0 {
     return nil, errors.New(fmt.Sprintf("Y dimention is out of bounds: %v", x))
   }
   return &w.data[x][y], nil
@@ -98,9 +98,9 @@ func (w *World) Print() {
         degrading = " "
       }
       if cell.Alive() {
-        cellRepr = fmt.Sprintf("LIVE(%v,%v)[%v]%v",row,col,cell.Age(),degrading)
+        cellRepr = fmt.Sprintf("LIVE(%03v,%03v)[%03v]%1v",row,col,cell.Age(),degrading)
       } else {
-        cellRepr = fmt.Sprintf("DEAD(%v,%v)[%v]%v",row,col,cell.Age(),degrading)
+        cellRepr = fmt.Sprintf("DEAD(%03v,%03v)[%03v]%1v",row,col,cell.Age(),degrading)
       }
       rowData = append(rowData, cellRepr)
     }
