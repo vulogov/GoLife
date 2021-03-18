@@ -10,6 +10,7 @@ type Cell struct {
   y          int
   name       string
   status     bool
+  degrading  bool
   opImmGiven int
   upImmGiven int
   opImmunity int
@@ -23,8 +24,8 @@ func NewCell(w *World, x, y int) Cell {
   var c Cell
   c.x = x
   c.y = y
-  c.ToDead()
   c.world = w
+  c.ToDead()
   return c
 }
 
@@ -61,13 +62,13 @@ func (c *Cell) Neighbors() []*Cell {
     }
   }
   n = append(n, w.GetCell(x1,c.y))
-  n = append(n, w.GetCell(x1,y1))
-  n = append(n, w.GetCell(c.x,y1))
-  n = append(n, w.GetCell(x2,y1))
-  n = append(n, w.GetCell(x2,c.y))
-  n = append(n, w.GetCell(x2,y2))
-  n = append(n, w.GetCell(c.x,y2))
   n = append(n, w.GetCell(x1,y2))
+  n = append(n, w.GetCell(c.x,y2))
+  n = append(n, w.GetCell(x2,y2))
+  n = append(n, w.GetCell(x2,c.y))
+  n = append(n, w.GetCell(x2,y1))
+  n = append(n, w.GetCell(c.x,y1))
+  n = append(n, w.GetCell(x1,y1))
   return n
 }
 
@@ -95,10 +96,13 @@ func (c *Cell) ToDead() bool {
   c.upImmunity  = 0
   c.opImmGiven  = 0
   c.upImmGiven  = 0
+  c.degrading   = false
+  // Tell in notificationCh that I am DEAD
+  c.world.NotificationCh <- *c
   return true
 }
 
-func (c *Cell) ToLife() int {
+func (c *Cell) ToLife() bool {
   w             := c.world
   c.age         = 0
   c.status      = true
@@ -106,11 +110,14 @@ func (c *Cell) ToLife() int {
   c.upImmunity  = rand.Intn(w.MaxImmunity())
   c.opImmGiven  = c.opImmunity
   c.upImmGiven  = c.upImmunity
-  return c.age
+  c.degrading   = false
+  // Tell in notificationCh that I am LIVE
+  c.world.NotificationCh <- *c
+  return true
 }
 
 func (c *Cell) Step() bool {
-  c.age += 1
+  c.age++
   n := c.Neighbors()
   aliveNeighbors := 0
   for _, nc := range n {
@@ -124,6 +131,9 @@ func (c *Cell) Step() bool {
       c.ToDead()
       return c.status
     }
+    if aliveNeighbors == 3 {
+      c.degrading = false
+    }
     if aliveNeighbors < 3 {
       // Underpopulation !!!
       c.upImmunity -= 1
@@ -132,6 +142,7 @@ func (c *Cell) Step() bool {
         c.ToDead()
         return c.status
       }
+      c.degrading = true
     }
     if aliveNeighbors > 3 {
       // Overpopulation !!!
@@ -141,6 +152,7 @@ func (c *Cell) Step() bool {
         c.ToDead()
         return c.status
       }
+      c.degrading = true
     }
     // See if we can restore immunity if condition is favorable
     if c.upImmGiven > c.upImmunity && c.world.immunityRestored == true {
@@ -167,6 +179,22 @@ func (c *Cell) Step() bool {
   return c.status
 }
 
+func (c *Cell) Degrading() bool {
+  return c.degrading
+}
+
 func (c *Cell) String() string {
-  return fmt.Sprintf("Name=%s; X=%v; Y=%v; Age=%v", c.name, c.x, c.y, c.age)
+  var status string
+  var deg string
+  if c.Alive() {
+    status = "LIVE"
+  } else {
+    status = "DEAD"
+  }
+  if c.Degrading() {
+    deg = "*"
+  } else {
+    deg = " "
+  }
+  return fmt.Sprintf("[%v%v] Name=%s; X=%v; Y=%v; Age=%v", status, deg, c.name, c.x, c.y, c.age)
 }
